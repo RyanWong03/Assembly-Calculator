@@ -49,6 +49,7 @@ error_overflow:
 	
 	j calculator
 	or $0, $0, $0
+
 error_factorial:
 	#Print the error string out for factorial_error.
 	lui $a0, 0x1000
@@ -58,6 +59,7 @@ error_factorial:
 
 	j calculator
 	or $0, $0, $0
+
 error_division:
 	#Print the error string out for division_error.
 	lui $a0, 0x1000
@@ -67,6 +69,7 @@ error_division:
 
 	j calculator
 	or $0, $0, $0
+
 error_modulus:
 	#Print the error string out for modulus_error.
 	lui $a0, 0x1000
@@ -76,6 +79,7 @@ error_modulus:
 	
 	j calculator
 	or $0, $0, $0
+
 #Subroutine to print the expression when printing the result. Example: User inputs 2, +, 5. This subroutine should print "2+5 = " to the console.
 #It will take in 3 arguments from $a1-$a3. The first argument is for the first integer. The second is for the operator. The third is for the second integer.
 print_expression:
@@ -91,8 +95,6 @@ print_expression:
 	#We can check this based off the operation the user inputted.
 	beq $t0, 0x21, continue #Checks if the operator was "!"
 	or $0, $0, $0
-
-	#make sure to add some bs symbol for square roots and beq for that as well
 
 second_integer:
 	add $a0, $0, $a3
@@ -158,7 +160,6 @@ skip_first_number: #Just a label for convenience when we run this loop infinite 
 	beq $t0, 0x5E, exponent #Checks if the operator was "^"
 	beq $t0, 0x25, modulus #Checks if the operator was "%"
 	or $0, $0, $0
-	#print string saying something went wrong, please try again and jump back to calculator label
 
 Add:
 	add $v1, $s0, $s1 #Sum of the two numbers the user inputted.
@@ -224,6 +225,7 @@ divide:
 
 	jr $ra
 	or $0, $0, $0
+
 #This is highly inefficient, but as of right now, I do not know any other way to implement factorial. I will work on optimizing this at a later date. q
 factorial:
 	#This is basically repetitive multiplication on n-=1 as long as n > 0.
@@ -236,31 +238,31 @@ factorial:
 	or $0, $0, $0
 	bne $s0, $0, non_zero_factorial
 
-zero_factorial:
-	addi $v1, $0, 1
-	j calculation_finished
-	or $0, $0, $0
+	zero_factorial:
+		addi $v1, $0, 1
+		j calculation_finished
+		or $0, $0, $0
 
-non_zero_factorial:
-	addi $t5, $0, 0 #Loop counter
-	addi $v1, $0, 1 #Product of previous 2 numbers, needs to be initialized at 1 to avoid 0 * 1 for the first expression.
+	non_zero_factorial:
+		addi $t5, $0, 0 #Loop counter
+		addi $v1, $0, 1 #Product of previous 2 numbers, needs to be initialized at 1 to avoid 0 * 1 for the first expression.
 
-factorial_loop:
-	addi $t5, $t5, 1 #Increment the loop counter
-	mult $t5, $v1 #Multiplying the #lower 32 bits
-	mflo $v1
-	mfhi $t9
-	
-	#If the product is bigger than the maximum 32 bit integer (signed), we need to stop because we have arithmetic overflow.
-	slt $t9, $t9, 1
-	beq $t9, $0 error_overflow
-	or $0, $0, $0 
-	#If no overflow, continue looping
-	bne $t5, $s0, factorial_loop
-	or $0, $0, $0
+	factorial_loop:
+		addi $t5, $t5, 1 #Increment the loop counter
+		mult $t5, $v1 #Multiplying the #lower 32 bits
+		mflo $v1
+		mfhi $t9
+		
+		#If the product is bigger than the maximum 32 bit integer (signed), we need to stop because we have arithmetic overflow.
+		slt $t9, $t9, 1
+		beq $t9, $0 error_overflow
+		or $0, $0, $0 
+		#If no overflow, continue looping
+		bne $t5, $s0, factorial_loop
+		or $0, $0, $0
 
-	j calculation_finished
-	or $0, $0, $0
+		j calculation_finished
+		or $0, $0, $0
 
 exponent:
 	#Exponents are basically multiplying the base n amount of times. Example: 2^5 = 32 because 2 x 2 x 2 x 2 x 2 = 32.
@@ -268,25 +270,25 @@ exponent:
 	#If user enters a negative exponent just display string saying "Negative exponents are unsupported currently."
 	bne $s1, $0, non_zero_exponent
 
-zero_exponent:
-	addi $v1, $0, 1
-	j calculation_finished
-	or $0, $0, $0
+	zero_exponent:
+		addi $v1, $0, 1
+		j calculation_finished
+		or $0, $0, $0
 
-non_zero_exponent:
-	addi $t1, $0, 1 #Loop counter
-	add $v1, $0, $s0 #This will store the product of the previous 2 multiplications.
+	non_zero_exponent:
+		addi $t1, $0, 1 #Loop counter
+		add $v1, $0, $s0 #This will store the product of the previous 2 multiplications.
 
-exponent_loop:
-	addi $t1, $t1, 1 #Increment the loop counter
-	mult $s0, $v1
-	mfhi $t3
-	bne $t3, $0, error_overflow
-	mflo $v1
-	bne $t1, $s1, exponent_loop
-	or $0, $0, $0
-	j calculation_finished
-	or $0, $0, $0
+	exponent_loop:
+		addi $t1, $t1, 1 #Increment the loop counter
+		mult $s0, $v1
+		mfhi $t3
+		bne $t3, $0, error_overflow
+		mflo $v1
+		bne $t1, $s1, exponent_loop
+		or $0, $0, $0
+		j calculation_finished
+		or $0, $0, $0
 modulus:
 	#Modulus is basically the remainder of a / b. Example: 10 % 4 = 2, 5 % 5 = 0.
 	#Is the user trying to modulo by 0?
