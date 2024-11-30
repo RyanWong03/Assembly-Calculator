@@ -1,4 +1,5 @@
 .globl decode
+.globl realloc_loop
 
 .data
 ###########################################################################################################################
@@ -37,8 +38,9 @@ strlen:
     strlen_loop:
         addi $v1, $v1, 1 #Increment the length of the string by 1
         lb $t0, 0($t2)
-        bne $t0, 0x0, strlen_loop #If we have not yet reached the null terminator yet, keep looping through the string
         addi $t2, $t2, 1 #t2 += sizeof(char)
+        bne $t0, 0x0, strlen_loop #If we have not yet reached the null terminator yet, keep looping through the string
+        or $0, $0, $0
     #Since we are incrementing the length of the string even when we reach the null terminator,
     #we need to subtract 1 from the length since the null terminator doesn't count as a valid character.
     jr $ra
@@ -58,7 +60,11 @@ isnumber:
 decode:
     #char *decoded_string = malloc(strlen(str)); //Empty array to store decoded string.
     jal strlen
-    add $t1, $0, $a0 #Store the address of the string temporarily. We need to use register a0 for a system call.
+    #add $t1, $0, $a0 #Store the address of the string temporarily. We need to use register a0 for a system call.
+    #store address of the string into $s6
+    addi $sp, $sp, -4
+    sw $s6, 0($sp)
+    add $s6, $0, $a0
     add $t7, $0, $a0 #Storing the address of the string. We will reference this whenever we need to get to the beginning of the string.
     add $t2, $0, $v1 #Store the string length in a temporary register. We will need to use it multiple times in this subroutine.
 
@@ -70,7 +76,7 @@ decode:
     
     #Base case. If the first char isn't even a number, it is already invalid.
     #if(!isnumber(str[0]))
-    lb $a0, 0($t1)
+    lb $a0, 0($s6)
     jal isnumber
     or $0, $0, $0
     beq $v1, $0, string_is_malformed
@@ -81,7 +87,7 @@ decode:
     addi $t3, $0, 0 #int i = 0;
     outer_loop:
         #if(!isnumber(str[i]))
-        lb $a0, 0($t1)
+        lb $a0, 0($s6)
         jal isnumber
         or $0, $0, $0
         beq $v1, $0, non_number
@@ -94,10 +100,10 @@ decode:
             slt $t5, $t4, $t2
 
             #if(!isnumber(str[i + 1]))
-            addi $t1, $t1, 1
-            lb $a0, 0($t1)
+            addi $s6, $s6, 1
+            lb $a0, 0($s6)
             jal isnumber
-            addi $t1, $t1, -1
+            addi $s6, $s6, -1
             #We need a 1 to result from the evaluation of the and statement (read the comment). In order for this to happen both values need to be a 1.
             #We need to invert the return value of isnumber to see if it is true or false. We can do this with xor'ing each bit with a 1.
             xori $v1, $v1, 1
@@ -169,7 +175,7 @@ decode:
                     la $a1, decoded_string_index
                     sw $t4, 0($a1)
                     addi $t9, $t9, 1
-                    lb $t4, 0($t1)
+                    lb $t4, 0($s6)
                     sb $t4, 0($t9)
 
                 endifelse:
@@ -183,11 +189,11 @@ decode:
         #else
         is_number:
             #if(str[i + 1] == ' ' || i + 1 == strlen(str))
-            addi $t1, $t1, 1
-            lb $s0, 0($t1) #s0 = str[i + 1]
+            addi $s6, $s6, 1
+            lb $s0, 0($s6) #s0 = str[i + 1]
             or $0, $0, $0
             beq $s0, 0x20, string_is_malformed #0x20 is the ascii value for a space char
-            addi $t1, $t1, -1
+            addi $s6, $s6, -1
             #is i + 1 == strlen(str)?
             addi $s0, $t3, 1
             beq $s0, $t2, string_is_malformed
@@ -204,7 +210,7 @@ decode:
             addi $s1, $0, 10
             mult $s0, $s1 #s0 * 10
             mflo $s1
-            lb $t8, 0($t1)
+            lb $t8, 0($s6)
             addi $t6, $0, 0x30 #ascii value for 0
             sub $t8, $t8, $t6 #(int)(str[i] - '0)
             add $s1, $s1, $t8 #multi_digit_number * 10 + (int)(str[i] - '0');
@@ -215,6 +221,9 @@ decode:
     or $0, $0, $0
     addi $sp, $sp, 4
     lw $s0, 0($sp)
+    or $0, $0, $0
+    addi $sp, $sp, 4
+    lw $s6, 0($sp)
     or $0, $0, $0
     addi $sp, $sp, 4
 
