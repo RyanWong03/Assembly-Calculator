@@ -26,6 +26,8 @@ stderr:	equ 0x2
 
 	;; ASCII characters
 ascii_plus:	equ 0x2B
+ascii_minus:	equ 0x2D
+ascii_enter:	equ 0xA
 
 result:		db 22 dup (0)
 	section .text
@@ -175,4 +177,44 @@ i2s_end:
 exit_program:
 	MOV rax, 60
 	SYSCALL
+
+	;; Takes in a pointer to a string representng an integer, in rdi.
+	;; Converts the string to an integer and returns it in rax.
+string2int:
+	MOV rsi, 0		;Negative number flag
+	MOV r8, 10		;10 is used for multiplication step to preserve the digits place value.
+	MOV rdx, 0		;Accumulator; Will store final result.
+	XOR rcx, rcx		;Clear out rcx so it doesn't interfere with reg cl.
 	
+	;; Check if number is negative.
+	MOV cl, byte [rdi]
+	CMP cl, ascii_minus
+	JNE s2i_positive
+
+s2i_negative:
+	MOV rsi, 1		;Set negative flag
+	INC rdi			;Go past negative sign in memory.
+
+s2i_positive:
+	;; If we reached the enter character, stop converting.
+	MOV cl, byte [rdi]
+	CMP cl, ascii_enter
+	JE s2i_fin_conv
+
+	;; Convert the characterized number to an integer, preserving its place value.
+	SUB cl, 0x30
+	MOV rax, rdx
+	MUL r8			;Multiply digit by 10 to preserve place value.
+	ADD rax, rcx
+	INC rdi
+	JMP s2i_positive
+
+s2i_fin_conv:
+	;; If number isn't negative, return, else convert to negative number.
+	CMP rsi, 0
+	JE s2i_return
+
+	NEG rax
+
+s2i_return:
+	ret
