@@ -24,6 +24,9 @@ stdin:	equ 0x0
 stdout:	equ 0x1
 stderr:	equ 0x2
 
+	;; ASCII characters
+ascii_plus:	equ 0x2B
+
 result:		db 22 dup (0)
 	section .text
 	
@@ -56,10 +59,34 @@ main:
 	MOV rdx, 22
 	CALL read_string
 
-	MOV rax, 60		;Exit system call code.
-	MOV rdi, 0		;Exit(0) basically.
-	SYSCALL
+	;; Check if operation is '+'
+	MOV sil, byte [operation_buffer]
+	CMP sil, ascii_plus
+	JE add_op
 
+	MOV rdi, 0		;Exit(1); Invalid operation code
+	JNE exit_program
+
+add_op:
+	LEA rdi, [first_number_buffer]
+	CALL string2int
+	MOV rsi, rax
+
+	LEA rdi, [second_number_buffer]
+	CALL string2int
+
+	ADD rsi, rax
+	MOV rdi, rsi
+	LEA rsi, [result]
+	MOV rdx, 22
+	CALL int2string
+
+	LEA rsi, [result_str]
+	CALL output_string
+
+	LEA rsi, [result]
+	CALL output_string
+	
 	;; read_string reads a user input string from a file (fd passed into rdi) and stores it in memory at the pointer passed into rsi.
 	;; This also takes in a parameter that determines how many characters to read (passed into rdx).
 read_string:
@@ -72,12 +99,6 @@ output_string:
 	MOV rdi, stdout
 	MOV rax, 1		;Code for write system call.
 	SYSCALL
-	RET
-	
-	;; Subroutine to add two numbers (passed into rdi and rsi), result passed into rax.
-adding:
-	ADD rdi, rsi
-	MOV rax, rdi
 	RET
 	
 int2string:			;Converts an integer (passed into rdi) to a string and stores it into the input buffer (passed into rsi).
@@ -149,3 +170,9 @@ i2s_end:
 	MOV byte [rsi], dl
 	POP rsi			;Restore pointer address.
 	RET
+
+	;; Exits the program; Error code passed into rdi
+exit_program:
+	MOV rax, 60
+	SYSCALL
+	
